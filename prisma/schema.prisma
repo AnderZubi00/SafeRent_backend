@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // Connection Pooler (pgBouncer) — para la app
+  directUrl = env("DIRECT_URL")     // Direct connection — para migraciones de Prisma
+}
+
+// --- ENUMS ---
+
+enum Rol {
+  INQUILINO
+  PROPIETARIO
+  ADMINISTRADOR
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  PAGO_RETENIDO
+  CONFIRMADO
+  COMPLETADO
+  DISPUTA
+  CANCELADO
+}
+
+enum MotivoTemporalidad {
+  ESTUDIOS
+  TRABAJO
+  OBRAS
+  SALUD
+  OTROS
+}
+
+// --- MODELOS ---
+
+model Usuario {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  contrasena_hash   String
+  nombre_completo   String
+  dni_nie           String?  @unique
+  rol               Rol      @default(INQUILINO)
+
+  stripe_account_id String?  @unique
+  verificado_kyc    Boolean  @default(false)
+
+  viviendas         Vivienda[]
+  reservas          Reserva[]
+
+  fecha_creacion    DateTime @default(now())
+  ultima_conexion   DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+model Vivienda {
+  id                    String   @id @default(uuid())
+  propietario           Usuario  @relation(fields: [propietario_id], references: [id])
+  propietario_id        String
+
+  direccion             String
+  ciudad                String   @default("Donostia-San Sebastián")
+  precio_mes            Float
+  fianza_importe        Float
+
+  num_registro_vivienda String   @unique
+  nota_simple_url       String?
+  verificada            Boolean  @default(false)
+
+  reservas              Reserva[]
+  fecha_creacion        DateTime @default(now())
+
+  @@map("viviendas")
+}
+
+model Reserva {
+  id                    String              @id @default(uuid())
+  vivienda              Vivienda            @relation(fields: [vivienda_id], references: [id])
+  vivienda_id           String
+  inquilino             Usuario             @relation(fields: [inquilino_id], references: [id])
+  inquilino_id          String
+
+  fecha_inicio          DateTime
+  fecha_fin             DateTime
+  estado                EstadoReserva       @default(PENDIENTE)
+
+  stripe_payment_intent String?             @unique
+  comision_plataforma   Float?
+
+  documentos            DocumentoTemporal[]
+  contrato              ContratoDigital?
+
+  fecha_creacion        DateTime            @default(now())
+
+  @@map("reservas")
+}
+
+model DocumentoTemporal {
+  id          String             @id @default(uuid())
+  reserva     Reserva            @relation(fields: [reserva_id], references: [id])
+  reserva_id  String
+
+  tipo        MotivoTemporalidad
+  archivo_url String
+  validado    Boolean            @default(false)
+
+  fecha_subida DateTime          @default(now())
+
+  @@map("documentos_temporales")
+}
+
+model ContratoDigital {
+  id                   String    @id @default(uuid())
+  reserva              Reserva   @relation(fields: [reserva_id], references: [id])
+  reserva_id           String    @unique
+
+  id_firma_externa     String?
+  pdf_final_url        String?
+  firmado_propietario  Boolean   @default(false)
+  firmado_inquilino    Boolean   @default(false)
+
+  fecha_firma_completa DateTime?
+
+  @@map("contratos_digitales")
+}
