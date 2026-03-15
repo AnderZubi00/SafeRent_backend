@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")   // Connection Pooler (pgBouncer) — para la app
-  directUrl = env("DIRECT_URL")     // Direct connection — para migraciones de Prisma
+  provider = "postgresql"
 }
 
 // --- ENUMS ---
