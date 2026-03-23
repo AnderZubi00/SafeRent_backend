@@ -26,6 +26,7 @@ npm run start:prod       # Run compiled app
 # Database
 npm run seed             # Seed DB with test users
 npx prisma migrate dev   # Run migrations in development
+npx prisma generate      # Regenerate Prisma client
 npx prisma studio        # Open Prisma Studio GUI
 
 # Testing
@@ -39,64 +40,75 @@ npm run lint             # ESLint with auto-fix
 npm run format           # Prettier format
 ```
 
-To run a single test file:
-```bash
-npx jest src/auth/auth.service.spec.ts
-```
-
 ## Architecture
 
 **NestJS 11** app with Prisma 7 + PostgreSQL (hosted on Supabase). All routes are prefixed with `/api/v1`.
+
+The backend is the **single source of truth** for all business logic. Frontend (Next.js) and mobile (Expo/React Native) are thin UI clients that only call backend REST endpoints.
 
 ### Module structure
 
 ```
 src/
-  app.module.ts          # Root module — loads ConfigModule globally, imports Auth
-  prisma/                # Global PrismaModule/PrismaService (available everywhere)
-  auth/                  # JWT auth: POST /api/v1/auth/login → returns JWT
-  users/                 # (planned, empty)
-  properties/            # (planned, empty)
-  rentals/               # (planned, empty)
-  payments/              # (planned, empty)
-  contracts/             # (planned, empty)
+  app.module.ts          # Root module — loads all modules
+  main.ts                # Bootstrap with ValidationPipe, CORS, GlobalExceptionFilter
+  prisma/                # Global PrismaModule/PrismaService
   common/
-    decorators/          # (planned, empty)
-    filters/             # (planned, empty)
-    guards/              # (planned, empty)
+    guards/              # JwtAuthGuard, RolesGuard
+    decorators/          # @CurrentUser(), @Roles()
+    filters/             # GlobalExceptionFilter
+  auth/                  # JWT auth: login, register, exchange (Supabase→JWT), me
+  storage/               # Global StorageModule — Supabase Storage signed URLs
+  email/                 # Global EmailModule — Resend integration, 5 email templates
+  viviendas/             # CRUD properties + search with filters
+  solicitudes/           # Application lifecycle: create, accept, reject + auto-emails
+  contratos/             # PDF generation (pdf-lib), contract signing
+  pagos/                 # Payment registration + email notifications
+  kyc/                   # KYC sessions, OCR analysis via OpenAI GPT-4o, MRZ validation
 ```
 
-**PrismaModule** is global — inject `PrismaService` directly into any service without re-importing the module.
+### Auth flow
 
-**AuthModule** exports `JwtModule` so other modules can verify tokens by importing `AuthModule`.
+1. User logs in via Supabase Auth (frontend/mobile)
+2. Client calls `POST /api/v1/auth/exchange` with Supabase access token
+3. Backend verifies token → returns SafeRent JWT
+4. All subsequent API calls use `Authorization: Bearer <jwt>`
+
+Guards: `@UseGuards(JwtAuthGuard)` for auth, `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('PROPIETARIO')` for role-based access.
 
 ### Domain model (Prisma schema)
 
-- **Usuario** — users with roles: `INQUILINO`, `PROPIETARIO`, `ADMINISTRADOR`. Tracks KYC verification and Stripe account.
-- **Vivienda** — rental property owned by a `PROPIETARIO`. Defaults to city "Donostia-San Sebastián".
-- **Reserva** — rental booking linking a `Vivienda` to an `INQUILINO`. State machine: `PENDIENTE → PAGO_RETENIDO → CONFIRMADO → COMPLETADO` (or `DISPUTA`/`CANCELADO`). Stripe PaymentIntent stored here.
-- **DocumentoTemporal** — supporting documents attached to a `Reserva` (type: `ESTUDIOS`, `TRABAJO`, `OBRAS`, `SALUD`, `OTROS`).
-- **ContratoDigital** — digital contract for a `Reserva`, signed via Signaturit. Tracks individual signing status for both parties.
+- **Usuario** — roles: `INQUILINO`, `PROPIETARIO`, `ADMINISTRADOR`
+- **Vivienda** — rental property with photos, filters (ciudad, motivo, precio, habitaciones)
+- **Solicitud** — rental application: `PENDIENTE → ACEPTADA / RECHAZADA`
+- **ContratoDigital** — PDF contract with dual signing (propietario + inquilino)
+- **Pago** — payment records
+- **KycSesion** — KYC verification sessions with OCR results
 
-### Database connection
+### API Endpoints
 
-Two connection strings are required:
-- `DATABASE_URL` — pooled connection via PgBouncer (port 6543, used by Prisma at runtime)
-- `DIRECT_URL` — direct connection (port 5432, used by Prisma for migrations)
-
-Both point to Supabase. The `prisma.config.ts` file wires these together for CLI commands.
+| Module | Endpoint | Auth |
+|--------|----------|------|
+| Auth | `POST /auth/login`, `POST /auth/register`, `POST /auth/exchange`, `GET /auth/me` | Mixed |
+| Viviendas | `GET /viviendas`, `GET /viviendas/:id`, `POST /viviendas`, `PATCH /viviendas/:id`, `GET /viviendas/mis-viviendas` | Mixed |
+| Solicitudes | `POST /solicitudes`, `GET /solicitudes/inquilino`, `GET /solicitudes/propietario`, `POST /solicitudes/:id/aceptar`, `POST /solicitudes/:id/rechazar` | JWT + Roles |
+| Contratos | `POST /contratos/generar`, `GET /contratos/solicitud/:id`, `POST /contratos/:id/firmar` | JWT |
+| Pagos | `POST /pagos`, `GET /pagos/inquilino`, `GET /pagos/propietario` | JWT + Roles |
+| KYC | `POST /kyc/sesion`, `POST /kyc/analizar`, `POST /kyc/analizar/completo`, `GET /kyc/estado` | JWT |
 
 ### Key integrations
 
-- **Stripe** (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) — payment processing and escrow via PaymentIntents
-- **Signaturit** (`SIGNATURIT_API_KEY`) — digital contract signing, referenced in `ContratoDigital.id_firma_externa`
-- **Supabase Storage** (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`) — file storage for documents and contract PDFs
-- **Puppeteer** — PDF generation (installed as a dependency)
+- **Stripe** (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) — payment processing
+- **Supabase Storage** (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) — file storage
+- **OpenAI** (`OPENAI_API_KEY`) — KYC document OCR via GPT-4o
+- **Resend** (`RESEND_API_KEY`) — transactional emails
+- **pdf-lib** — PDF contract generation
 
 ### Global setup (main.ts)
 
 - `ValidationPipe` with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
-- CORS: allows `localhost:3000` in dev, `FRONTEND_URL` env var in prod
+- `GlobalExceptionFilter` for standardized error responses
+- CORS: allows `localhost` in dev, `FRONTEND_URL` env var in prod
 - Runs on `PORT` env var (default 3001)
 
 ### Test users (after `npm run seed`)

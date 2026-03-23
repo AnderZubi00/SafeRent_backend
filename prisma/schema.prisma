@@ -14,21 +14,21 @@ enum Rol {
   ADMINISTRADOR
 }
 
-enum EstadoReserva {
+enum EstadoSolicitud {
   PENDIENTE
-  PAGO_RETENIDO
-  CONFIRMADO
-  COMPLETADO
-  DISPUTA
-  CANCELADO
+  ACEPTADA
+  RECHAZADA
+
+  @@map("estado_solicitud")
 }
 
-enum MotivoTemporalidad {
-  ESTUDIOS
-  TRABAJO
-  OBRAS
-  SALUD
-  OTROS
+enum EstadoKyc {
+  PENDIENTE
+  ESCANEANDO
+  COMPLETADO
+  FALLIDO
+
+  @@map("estado_kyc")
 }
 
 // --- MODELOS ---
@@ -44,8 +44,11 @@ model Usuario {
   stripe_account_id String?  @unique
   verificado_kyc    Boolean  @default(false)
 
-  viviendas         Vivienda[]
-  reservas          Reserva[]
+  viviendas               Vivienda[]
+  solicitudes_inquilino   Solicitud[]      @relation("inquilino")
+  solicitudes_propietario Solicitud[]      @relation("propietario")
+  pagos                   Pago[]
+  kyc_sesiones            KycSesion[]
 
   fecha_creacion    DateTime @default(now())
   ultima_conexion   DateTime @updatedAt
@@ -58,68 +61,117 @@ model Vivienda {
   propietario           Usuario  @relation(fields: [propietario_id], references: [id])
   propietario_id        String
 
+  titulo                String
+  descripcion           String?
   direccion             String
+  barrio                String?
   ciudad                String   @default("Donostia-San Sebastián")
   precio_mes            Float
   fianza_importe        Float
+  habitaciones          Int      @default(1)
+  banos                 Int      @default(1)
+  m2                    Float    @default(0)
+  motivos               String[] @default([])
+  fotos                 String[] @default([])
 
   num_registro_vivienda String   @unique
   nota_simple_url       String?
   verificada            Boolean  @default(false)
+  activa                Boolean  @default(true)
 
-  reservas              Reserva[]
+  disponible_desde      DateTime?
+  duracion_minima       String?
+  estancia_minima       Int      @default(1)
+  estancia_maxima       Int      @default(12)
+
+  solicitudes           Solicitud[]
+  pagos                 Pago[]
   fecha_creacion        DateTime @default(now())
 
   @@map("viviendas")
 }
 
-model Reserva {
-  id                    String              @id @default(uuid())
-  vivienda              Vivienda            @relation(fields: [vivienda_id], references: [id])
-  vivienda_id           String
-  inquilino             Usuario             @relation(fields: [inquilino_id], references: [id])
-  inquilino_id          String
+model Solicitud {
+  id                       String          @id @default(uuid())
+  vivienda                 Vivienda        @relation(fields: [vivienda_id], references: [id])
+  vivienda_id              String
+  inquilino                Usuario         @relation("inquilino", fields: [inquilino_id], references: [id])
+  inquilino_id             String
+  propietario              Usuario         @relation("propietario", fields: [propietario_id], references: [id])
+  propietario_id           String
 
-  fecha_inicio          DateTime
-  fecha_fin             DateTime
-  estado                EstadoReserva       @default(PENDIENTE)
+  motivo                   String
+  motivo_detalle           String?
+  documento_identidad_url  String
+  documento_justificativo_url String
 
-  stripe_payment_intent String?             @unique
-  comision_plataforma   Float?
+  fecha_entrada            DateTime
+  fecha_salida             DateTime
+  estado                   EstadoSolicitud @default(PENDIENTE)
+  motivo_rechazo           String?
 
-  documentos            DocumentoTemporal[]
-  contrato              ContratoDigital?
+  contrato                 ContratoDigital?
+  pagos                    Pago[]
 
-  fecha_creacion        DateTime            @default(now())
+  fecha_creacion           DateTime        @default(now())
 
-  @@map("reservas")
-}
-
-model DocumentoTemporal {
-  id          String             @id @default(uuid())
-  reserva     Reserva            @relation(fields: [reserva_id], references: [id])
-  reserva_id  String
-
-  tipo        MotivoTemporalidad
-  archivo_url String
-  validado    Boolean            @default(false)
-
-  fecha_subida DateTime          @default(now())
-
-  @@map("documentos_temporales")
+  @@map("solicitudes")
 }
 
 model ContratoDigital {
   id                   String    @id @default(uuid())
-  reserva              Reserva   @relation(fields: [reserva_id], references: [id])
-  reserva_id           String    @unique
+  solicitud            Solicitud @relation(fields: [solicitud_id], references: [id])
+  solicitud_id         String    @unique
 
-  id_firma_externa     String?
+  pdf_borrador_url     String?
   pdf_final_url        String?
   firmado_propietario  Boolean   @default(false)
   firmado_inquilino    Boolean   @default(false)
+  firma_propietario_img String?
+  firma_inquilino_img  String?
 
   fecha_firma_completa DateTime?
 
   @@map("contratos_digitales")
+}
+
+model Pago {
+  id             String    @id @default(uuid())
+  solicitud      Solicitud @relation(fields: [solicitud_id], references: [id])
+  solicitud_id   String
+  inquilino      Usuario   @relation(fields: [inquilino_id], references: [id])
+  inquilino_id   String
+  vivienda       Vivienda  @relation(fields: [vivienda_id], references: [id])
+  vivienda_id    String
+
+  concepto       String
+  importe        Float
+  estado         String    @default("COMPLETADO")
+  metodo         String    @default("tarjeta")
+
+  fecha_pago     DateTime  @default(now())
+
+  @@map("pagos")
+}
+
+model KycSesion {
+  id              String    @id @default(uuid())
+  usuario         Usuario   @relation(fields: [usuario_id], references: [id])
+  usuario_id      String
+  token           String    @unique @default(uuid())
+  estado          EstadoKyc @default(PENDIENTE)
+
+  safe_score      Int?
+  nfc_verificado  Boolean   @default(false)
+  nombre_extraido String?
+  apellidos_extraidos String?
+  dni_extraido    String?
+  tipo_documento  String?
+  datos_raw       Json?
+
+  expira_en       DateTime
+  creado_en       DateTime  @default(now())
+  actualizado_en  DateTime  @updatedAt
+
+  @@map("kyc_sesiones")
 }
