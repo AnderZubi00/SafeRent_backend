@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { ContratosPdfService } from './contratos-pdf.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 const BUCKET_PDF = 'contratos-pdf';
 
@@ -18,6 +19,7 @@ export class ContratosService {
     private readonly storage: StorageService,
     private readonly email: EmailService,
     private readonly pdfService: ContratosPdfService,
+    private readonly notifications: NotificationsGateway,
   ) {}
 
   async generar(solicitudId: string, userId: string) {
@@ -186,6 +188,17 @@ export class ContratosService {
         viviendaTitulo: solicitud.vivienda.titulo,
       });
     }
+
+    const otherPartyId = isPropietario
+      ? solicitud.inquilino.id
+      : solicitud.propietario.id;
+
+    this.notifications.emitToUser(otherPartyId, 'contrato:signed', {
+      id: updated.id,
+      solicitudId: contrato.solicitud_id,
+      firmadoPor: isPropietario ? 'propietario' : 'inquilino',
+      bothSigned,
+    });
 
     return updated;
   }

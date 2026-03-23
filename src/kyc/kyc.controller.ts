@@ -8,11 +8,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { KycService } from './kyc.service';
+import { EstadoKyc } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import {
-  CurrentUser,
-  JwtPayload,
-} from '../common/decorators/current-user.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @Controller('kyc')
 export class KycController {
@@ -80,7 +79,7 @@ export class KycController {
     @Body()
     body: {
       token: string;
-      estado: string;
+      estado: EstadoKyc;
       safe_score?: number;
       nfc_verificado?: boolean;
       nombre_extraido?: string;

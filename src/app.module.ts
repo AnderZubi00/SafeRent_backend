@@ -12,6 +12,7 @@ import { ContratosModule } from './contratos/contratos.module';
 import { PagosModule } from './pagos/pagos.module';
 import { KycModule } from './kyc/kyc.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AdminModule } from './admin/admin.module';
     PagosModule,
     KycModule,
     AdminModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

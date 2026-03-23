@@ -149,6 +149,8 @@ model Pago {
   estado         String    @default("COMPLETADO")
   metodo         String    @default("tarjeta")
 
+  stripe_payment_intent_id String? @unique
+
   fecha_pago     DateTime  @default(now())
 
   @@map("pagos")

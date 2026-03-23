@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { ContratosService } from '../contratos/contratos.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 
 const BUCKET_DOCS = 'documentos-solicitud';
@@ -22,6 +23,7 @@ export class SolicitudesService {
     private readonly storage: StorageService,
     private readonly email: EmailService,
     private readonly contratos: ContratosService,
+    private readonly notifications: NotificationsGateway,
   ) {}
 
   async create(
@@ -71,6 +73,12 @@ export class SolicitudesService {
       propietarioNombre: vivienda.propietario.nombre_completo,
       inquilinoNombre: inquilino?.nombre_completo ?? 'Inquilino',
       viviendaTitulo: vivienda.titulo,
+    });
+
+    this.notifications.emitToUser(dto.propietario_id, 'solicitud:created', {
+      id: solicitud.id,
+      vivienda_id: solicitud.vivienda_id,
+      inquilinoNombre: inquilino?.nombre_completo ?? 'Inquilino',
     });
 
     return solicitud;
@@ -239,6 +247,11 @@ export class SolicitudesService {
       // No fallar la aceptación si el contrato falla — se puede regenerar después
     }
 
+    this.notifications.emitToUser(solicitud.inquilino.id, 'solicitud:updated', {
+      id: updated.id,
+      estado: 'ACEPTADA',
+    });
+
     return updated;
   }
 
@@ -266,6 +279,11 @@ export class SolicitudesService {
       inquilinoNombre: solicitud.inquilino.nombre_completo,
       viviendaTitulo: solicitud.vivienda.titulo,
       motivoRechazo,
+    });
+
+    this.notifications.emitToUser(solicitud.inquilino.id, 'solicitud:updated', {
+      id: updated.id,
+      estado: 'RECHAZADA',
     });
 
     return updated;

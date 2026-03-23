@@ -9,10 +9,8 @@ import {
 import { ContratosService } from './contratos.service';
 import { SignContratoDto } from './dto/sign-contrato.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import {
-  CurrentUser,
-  JwtPayload,
-} from '../common/decorators/current-user.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @Controller('contratos')
 @UseGuards(JwtAuthGuard)

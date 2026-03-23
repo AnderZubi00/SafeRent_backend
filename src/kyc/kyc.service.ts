@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { EstadoKyc } from '@prisma/client';
 import OpenAI from 'openai';
 
 type ImageContent = OpenAI.Chat.Completions.ChatCompletionContentPartImage;
@@ -202,14 +203,24 @@ Si la MRZ no es visible → ok:false, todos los campos vacíos.${soporteContext}
     const soporte = (parsed.numero_soporte as string) ?? '';
     const soporteValid = !soporteHint || soporte === soporteHint;
 
-    const dob = (parsed.fecha_nacimiento as string) ?? '';
-    const expiry = (parsed.fecha_expiracion as string) ?? '';
+    let dob = (parsed.fecha_nacimiento as string) ?? '';
+    let expiry = (parsed.fecha_expiracion as string) ?? '';
     const line2 = (parsed.mrz_linea2 as string) ?? '';
 
     const dobCd = line2.length >= 7 ? parseInt(line2[6]) : -1;
     const expiryCd = line2.length >= 15 ? parseInt(line2[14]) : -1;
-    const dobValid = dob.length === 6 && !isNaN(dobCd) && mrzCheckDigit(dob) === dobCd;
-    const expiryValid = expiry.length === 6 && !isNaN(expiryCd) && mrzCheckDigit(expiry) === expiryCd;
+    let dobValid = dob.length === 6 && !isNaN(dobCd) && mrzCheckDigit(dob) === dobCd;
+    let expiryValid = expiry.length === 6 && !isNaN(expiryCd) && mrzCheckDigit(expiry) === expiryCd;
+
+    // Correct OCR misreads using check digits
+    if (!dobValid && dob.length === 6 && !isNaN(dobCd)) {
+      const corrected = correctByCheckDigit(dob, dobCd, { isDate: true });
+      if (corrected) { dob = corrected; dobValid = true; }
+    }
+    if (!expiryValid && expiry.length === 6 && !isNaN(expiryCd)) {
+      const corrected = correctByCheckDigit(expiry, expiryCd, { isDate: true });
+      if (corrected) { expiry = corrected; expiryValid = true; }
+    }
 
     const allValid = soporteValid && !!soporte && dobValid && expiryValid;
 
@@ -299,18 +310,47 @@ Responde con este JSON:
     const expFromLine = line2.length >= 15 ? line2.substring(8, 14) : '';
     const dobCd = line2.length >= 7 ? parseInt(line2[6]) : -1;
     const expiryCd = line2.length >= 15 ? parseInt(line2[14]) : -1;
-    const dobValid = dobFromLine.length === 6 && !isNaN(dobCd) && mrzCheckDigit(dobFromLine) === dobCd;
-    const expiryValid = expFromLine.length === 6 && !isNaN(expiryCd) && mrzCheckDigit(expFromLine) === expiryCd;
+    let dobValid = dobFromLine.length === 6 && !isNaN(dobCd) && mrzCheckDigit(dobFromLine) === dobCd;
+    let expiryValid = expFromLine.length === 6 && !isNaN(expiryCd) && mrzCheckDigit(expFromLine) === expiryCd;
 
-    const dob = dobValid ? dobFromLine : (datos.fecha_nacimiento ?? '');
-    const expiry = expiryValid ? expFromLine : (datos.fecha_expiracion ?? '');
+    // Try to correct OCR misreads using check digits from the MRZ
+    let correctedDob: string | null = null;
+    let correctedExpiry: string | null = null;
+    let correctedSoporte: string | null = null;
+
+    if (!dobValid && dobFromLine.length === 6 && !isNaN(dobCd)) {
+      correctedDob = correctByCheckDigit(dobFromLine, dobCd, { isDate: true });
+      if (correctedDob) {
+        this.logger.log(`[KYC] DOB corrected: ${dobFromLine} → ${correctedDob} (cd=${dobCd})`);
+        dobValid = true;
+      }
+    }
+
+    if (!expiryValid && expFromLine.length === 6 && !isNaN(expiryCd)) {
+      correctedExpiry = correctByCheckDigit(expFromLine, expiryCd, { isDate: true });
+      if (correctedExpiry) {
+        this.logger.log(`[KYC] Expiry corrected: ${expFromLine} → ${correctedExpiry} (cd=${expiryCd})`);
+        expiryValid = true;
+      }
+    }
+
+    const dob = dobValid ? (correctedDob ?? dobFromLine) : (datos.fecha_nacimiento ?? '');
+    const expiry = expiryValid ? (correctedExpiry ?? expFromLine) : (datos.fecha_expiracion ?? '');
 
     const soporteFromLine1 = line1.length >= 15 ? line1.substring(5, 14) : '';
     const soporteCd = line1.length >= 15 ? parseInt(line1[14]) : -1;
-    const soporteValid = soporteFromLine1.length === 9 && !isNaN(soporteCd) &&
+    let soporteValid = soporteFromLine1.length === 9 && !isNaN(soporteCd) &&
       mrzCheckDigit(soporteFromLine1) === soporteCd;
 
-    const soporte = soporteValid ? soporteFromLine1 : (datos.numero_soporte ?? '');
+    if (!soporteValid && soporteFromLine1.length === 9 && !isNaN(soporteCd)) {
+      correctedSoporte = correctByCheckDigit(soporteFromLine1, soporteCd, { alphanumeric: true });
+      if (correctedSoporte) {
+        this.logger.log(`[KYC] Soporte corrected: ${soporteFromLine1} → ${correctedSoporte} (cd=${soporteCd})`);
+        soporteValid = true;
+      }
+    }
+
+    const soporte = soporteValid ? (correctedSoporte ?? soporteFromLine1) : (datos.numero_soporte ?? '');
     const numeroDni = datos.numero_documento ?? '';
     const hasDni = !!numeroDni;
 
@@ -335,6 +375,9 @@ Responde con este JSON:
         linea1: line1, linea2: line2,
         dobValid, expiryValid, dobCd, expiryCd, dob, expiry,
         soporteValid,
+        ...(correctedDob && { correctedDob }),
+        ...(correctedExpiry && { correctedExpiry }),
+        ...(correctedSoporte && { correctedSoporte }),
       },
       datos_extraidos: {
         nombre: datos.nombre ?? '',
@@ -430,7 +473,7 @@ Responde con este JSON:
   async updateSessionByToken(
     token: string,
     update: {
-      estado: string;
+      estado: EstadoKyc;
       safe_score?: number;
       nfc_verificado?: boolean;
       nombre_extraido?: string;
@@ -473,4 +516,81 @@ function mrzCheckDigit(str: string): number {
     return 0; // '<' = 0
   };
   return str.split('').reduce((sum, c, i) => sum + val(c) * weights[i % 3], 0) % 10;
+}
+
+/**
+ * Try to correct a misread MRZ field by brute-forcing single-character
+ * substitutions until the ICAO check digit matches.
+ * Returns the corrected string or null if no unique correction found.
+ */
+function correctByCheckDigit(
+  field: string,
+  expectedCd: number,
+  opts: { alphanumeric?: boolean; isDate?: boolean } = {},
+): string | null {
+  if (mrzCheckDigit(field) === expectedCd) return field;
+
+  const chars = opts.alphanumeric
+    ? '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<'
+    : '0123456789';
+
+  let candidates: string[] = [];
+  for (let pos = 0; pos < field.length; pos++) {
+    for (const ch of chars) {
+      if (ch === field[pos]) continue;
+      const attempt = field.substring(0, pos) + ch + field.substring(pos + 1);
+      if (mrzCheckDigit(attempt) === expectedCd) {
+        candidates.push(attempt);
+      }
+    }
+  }
+
+  // For date fields (YYMMDD), filter by valid date
+  if (opts.isDate && candidates.length > 1) {
+    candidates = candidates.filter((c) => {
+      const mm = parseInt(c.substring(2, 4));
+      const dd = parseInt(c.substring(4, 6));
+      return mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31;
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  // Score by OCR confusion likelihood (lower = more likely correct)
+  const ocrConfusion: Record<string, string[]> = {
+    '0': ['O', 'D', '6', '8'],
+    '1': ['I', 'L', '7', '2'],
+    '2': ['Z', '7', '1'],
+    '3': ['8', '9'],
+    '5': ['S', '6'],
+    '6': ['0', '5', '8'],
+    '7': ['1', '2'],
+    '8': ['0', '3', '6', '9', 'B'],
+    '9': ['8', '3'],
+    'O': ['0', 'D', 'Q'],
+    'B': ['8'],
+    'D': ['0', 'O'],
+    'I': ['1', 'L'],
+    'S': ['5'],
+    'Z': ['2'],
+  };
+
+  let best = candidates[0];
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    let score = 10; // base penalty
+    for (let i = 0; i < c.length; i++) {
+      if (c[i] !== field[i]) {
+        const confusions = ocrConfusion[field[i]] ?? [];
+        score = confusions.includes(c[i]) ? 1 : 5;
+        break;
+      }
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return best;
 }

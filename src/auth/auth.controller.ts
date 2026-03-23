@@ -12,7 +12,8 @@ import { LoginDto } from './login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ExchangeTokenDto } from './dto/exchange-token.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { JwtPayload } from '../common/decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
