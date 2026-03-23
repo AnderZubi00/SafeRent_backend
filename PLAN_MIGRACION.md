@@ -300,3 +300,8 @@ Para validar cada fase:
 | `SafeRent/src/lib/email.ts` | Templates de email + Resend | Migrar al módulo Email del backend |
 | `SafeRent_backend/src/auth/auth.service.ts` | Login con bcrypt + JWT | Extender con register y exchange |
 | `SafeRent_backend/prisma/schema.prisma` | Schema actual (desincronizado) | Reescribir para reflejar BD real |
+
+  cd SafeRent_backend && npm install && npx prisma generate                        
+  cd ../SafeRent && npm install                                                                                                            
+  cd ../SafeRentMobile && npm install
+                                                                                                                                             Y añadir EXPO_PUBLIC_API_URL=http://localhost:3001 al .env del mobile.   
