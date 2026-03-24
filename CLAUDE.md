@@ -14,6 +14,7 @@ read `AGENT.md` for routing rules, then load only the relevant skill from `.agen
 | Auth / JWT / Guards | `.agent/skills/auth.skill.md` |
 | Database / Prisma | `.agent/skills/database.skill.md` |
 | Contracts / PDF / Signaturit | `.agent/skills/contracts.skill.md` |
+| Estructura de módulos, bootstrap, comunicación inter-repo | `.agent/skills/architecture.skill.md` |
 
 ## Commands
 
@@ -65,6 +66,7 @@ src/
   contratos/             # PDF generation (pdf-lib), contract signing
   pagos/                 # Payment registration + email notifications
   kyc/                   # KYC sessions, OCR analysis via OpenAI GPT-4o, MRZ validation
+  notifications/         # WebSocket notifications via Socket.io
 ```
 
 ### Auth flow
