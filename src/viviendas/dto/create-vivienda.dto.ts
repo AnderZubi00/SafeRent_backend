@@ -25,6 +25,9 @@ export class CreateViviendaDto {
   @IsString()
   ciudad: string;
 
+  @IsString()
+  provincia: string;
+
   @IsNumber()
   @Min(0)
   precio_mes: number;

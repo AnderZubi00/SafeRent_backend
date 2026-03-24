@@ -4,6 +4,10 @@ import { Transform } from 'class-transformer';
 export class FilterViviendasDto {
   @IsOptional()
   @IsString()
+  provincia?: string;
+
+  @IsOptional()
+  @IsString()
   ciudad?: string;
 
   @IsOptional()

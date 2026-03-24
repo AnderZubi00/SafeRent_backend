@@ -28,6 +28,7 @@ export class ViviendasService {
         direccion: dto.direccion,
         barrio: dto.barrio,
         ciudad: dto.ciudad,
+        provincia: dto.provincia,
         precio_mes: dto.precio_mes,
         fianza_importe: dto.fianza_importe,
         habitaciones: dto.habitaciones,
@@ -49,6 +50,10 @@ export class ViviendasService {
 
   async findAll(filtros?: FilterViviendasDto) {
     const where: Prisma.ViviendaWhereInput = { activa: true };
+
+    if (filtros?.provincia && filtros.provincia !== 'todas') {
+      where.provincia = { contains: filtros.provincia, mode: 'insensitive' };
+    }
 
     if (filtros?.ciudad && filtros.ciudad !== 'todas') {
       where.ciudad = { contains: filtros.ciudad, mode: 'insensitive' };
@@ -126,6 +131,7 @@ export class ViviendasService {
     if (dto.direccion !== undefined) data.direccion = dto.direccion;
     if (dto.barrio !== undefined) data.barrio = dto.barrio;
     if (dto.ciudad !== undefined) data.ciudad = dto.ciudad;
+    if (dto.provincia !== undefined) data.provincia = dto.provincia;
     if (dto.precio_mes !== undefined) data.precio_mes = dto.precio_mes;
     if (dto.fianza_importe !== undefined)
       data.fianza_importe = dto.fianza_importe;

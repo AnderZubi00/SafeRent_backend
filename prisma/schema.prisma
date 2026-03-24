@@ -66,6 +66,7 @@ model Vivienda {
   direccion             String
   barrio                String?
   ciudad                String   @default("Donostia-San Sebastián")
+  provincia             String   @default("")
   precio_mes            Float
   fianza_importe        Float
   habitaciones          Int      @default(1)
