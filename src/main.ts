@@ -34,7 +34,19 @@ async function bootstrap() {
             cb(new Error(`CORS bloqueado para: ${origin}`));
           }
         }
-      : process.env.FRONTEND_URL,
+      : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+          const frontendUrl = process.env.FRONTEND_URL ?? '';
+          // Accept exact FRONTEND_URL and any Vercel preview deployment for the same project
+          const allowed =
+            !origin ||
+            origin === frontendUrl ||
+            /^https:\/\/saferent(-[a-z0-9]+)?-anderzubi00s-projects\.vercel\.app$/.test(origin);
+          if (allowed) {
+            cb(null, true);
+          } else {
+            cb(new Error(`CORS bloqueado para: ${origin}`));
+          }
+        },
     credentials: true,
   });
 
