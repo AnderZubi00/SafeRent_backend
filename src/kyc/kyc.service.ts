@@ -373,6 +373,7 @@ Responde con este JSON:
       safe_score,
       mrz_debug: {
         linea1: line1, linea2: line2,
+        rawDob: dobFromLine, rawExpiry: expFromLine,
         dobValid, expiryValid, dobCd, expiryCd, dob, expiry,
         soporteValid,
         ...(correctedDob && { correctedDob }),
