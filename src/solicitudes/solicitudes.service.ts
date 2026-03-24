@@ -46,6 +46,28 @@ export class SolicitudesService {
       throw new BadRequestException('La vivienda no existe o no está activa');
     }
 
+    const entrada = new Date(dto.fecha_entrada);
+    const salida = new Date(dto.fecha_salida);
+
+    if (isNaN(entrada.getTime()) || isNaN(salida.getTime())) {
+      throw new BadRequestException('Fechas inválidas');
+    }
+    if (entrada >= salida) {
+      throw new BadRequestException('La fecha de entrada debe ser anterior a la fecha de salida');
+    }
+    if (entrada < new Date()) {
+      throw new BadRequestException('La fecha de entrada debe ser futura');
+    }
+
+    const diffMs = salida.getTime() - entrada.getTime();
+    const diffMonths = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30));
+    if (vivienda.estancia_minima && diffMonths < vivienda.estancia_minima) {
+      throw new BadRequestException(`La estancia mínima es de ${vivienda.estancia_minima} meses`);
+    }
+    if (vivienda.estancia_maxima && diffMonths > vivienda.estancia_maxima) {
+      throw new BadRequestException(`La estancia máxima es de ${vivienda.estancia_maxima} meses`);
+    }
+
     // Verificar datos del inquilino
     const inquilino = await this.prisma.usuario.findUnique({
       where: { id: inquilinoId },
@@ -192,6 +214,8 @@ export class SolicitudesService {
       select: {
         estado: true,
         motivo_rechazo: true,
+        fecha_entrada: true,
+        fecha_salida: true,
         contrato: {
           select: {
             id: true,
@@ -207,10 +231,17 @@ export class SolicitudesService {
       throw new NotFoundException('Solicitud no encontrada');
     }
 
+    const pagos_completados = await this.prisma.pago.count({
+      where: { solicitud_id: id, estado: 'COMPLETADO' },
+    });
+
     return {
       estado: solicitud.estado,
       motivo_rechazo: solicitud.motivo_rechazo,
       contrato: solicitud.contrato,
+      pagos_completados,
+      fecha_entrada: solicitud.fecha_entrada,
+      fecha_salida: solicitud.fecha_salida,
     };
   }
 
@@ -227,25 +258,35 @@ export class SolicitudesService {
       throw new BadRequestException('La solicitud no está pendiente');
     }
 
-    const updated = await this.prisma.solicitud.update({
-      where: { id },
-      data: { estado: 'ACEPTADA' },
+    const overlapping = await this.prisma.solicitud.findFirst({
+      where: {
+        vivienda_id: solicitud.vivienda_id,
+        estado: 'ACEPTADA',
+        id: { not: id },
+        fecha_entrada: { lt: solicitud.fecha_salida },
+        fecha_salida: { gt: solicitud.fecha_entrada },
+      },
+    });
+    if (overlapping) {
+      throw new BadRequestException('Ya existe una reserva aceptada con fechas solapadas para esta vivienda');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const sol = await tx.solicitud.update({
+        where: { id },
+        data: { estado: 'ACEPTADA' },
+      });
+
+      await this.contratos.generar(id, propietarioId);
+
+      return sol;
     });
 
-    // Enviar email al inquilino
     await this.email.sendSolicitudAceptada({
       inquilinoEmail: solicitud.inquilino.email,
       inquilinoNombre: solicitud.inquilino.nombre_completo,
       viviendaTitulo: solicitud.vivienda.titulo,
     });
-
-    // Generar contrato automáticamente
-    try {
-      await this.contratos.generar(id, propietarioId);
-    } catch (e) {
-      this.logger.error(`Error al generar contrato para solicitud ${id}:`, e);
-      // No fallar la aceptación si el contrato falla — se puede regenerar después
-    }
 
     this.notifications.emitToUser(solicitud.inquilino.id, 'solicitud:updated', {
       id: updated.id,
