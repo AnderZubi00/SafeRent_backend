@@ -81,7 +81,7 @@ Guards: `@UseGuards(JwtAuthGuard)` for auth, `@UseGuards(JwtAuthGuard, RolesGuar
 ### Domain model (Prisma schema)
 
 - **Usuario** — roles: `INQUILINO`, `PROPIETARIO`, `ADMINISTRADOR`
-- **Vivienda** — rental property with photos, filters (ciudad, motivo, precio, habitaciones)
+- **Vivienda** — rental property with photos, filters (provincia, ciudad, motivo, precio, habitaciones). `provincia` field added for cascading location system. `activa` boolean controls public visibility (`findAll` filters `activa: true`).
 - **Solicitud** — rental application: `PENDIENTE → ACEPTADA / RECHAZADA`
 - **ContratoDigital** — PDF contract with dual signing (propietario + inquilino)
 - **Pago** — payment records
@@ -97,6 +97,13 @@ Guards: `@UseGuards(JwtAuthGuard)` for auth, `@UseGuards(JwtAuthGuard, RolesGuar
 | Contratos | `POST /contratos/generar`, `GET /contratos/solicitud/:id`, `POST /contratos/:id/firmar` | JWT |
 | Pagos | `POST /pagos`, `GET /pagos/inquilino`, `GET /pagos/propietario` | JWT + Roles |
 | KYC | `POST /kyc/sesion`, `POST /kyc/analizar`, `POST /kyc/analizar/completo`, `GET /kyc/estado` | JWT |
+
+### Viviendas Update — Partial PATCH
+
+The `PATCH /viviendas/:id` endpoint uses explicit field-by-field mapping (not spread). Only fields present in the DTO are updated. This is critical for the `fotos` field:
+- Backend only updates `fotos` if `dto.fotos !== undefined`
+- Frontend `actualizarVivienda()` only includes `fotos` when caller explicitly passes photo params
+- This prevents accidental photo deletion when toggling fields like `activa`
 
 ### Key integrations
 
