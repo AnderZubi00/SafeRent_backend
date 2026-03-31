@@ -28,7 +28,7 @@ async function bootstrap() {
     origin: isDev
       ? (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
           // En desarrollo acepta localhost y IPs de red local
-          if (!origin || /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin)) {
+          if (!origin || /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)) {
             cb(null, true);
           } else {
             cb(new Error(`CORS bloqueado para: ${origin}`));
