@@ -12,6 +12,7 @@ import { EstadoKyc } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
+import { CompletarPropietarioDto } from './dto/completar-propietario.dto';
 
 @Controller('kyc')
 export class KycController {
@@ -29,6 +30,15 @@ export class KycController {
   @UseGuards(JwtAuthGuard)
   getEstado(@CurrentUser() user: JwtPayload) {
     return this.kycService.getEstado(user.sub);
+  }
+
+  @Patch('completar-propietario')
+  @UseGuards(JwtAuthGuard)
+  completarPropietario(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: CompletarPropietarioDto,
+  ) {
+    return this.kycService.completarPropietario(user.sub, body);
   }
 
   @Post('analizar')

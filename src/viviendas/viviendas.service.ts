@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -11,6 +12,7 @@ import { FilterViviendasDto } from './dto/filter-viviendas.dto';
 import { Prisma } from '@prisma/client';
 
 const BUCKET_FOTOS = 'viviendas-fotos';
+const BUCKET_NOTA_SIMPLE = 'viviendas-fotos';
 
 @Injectable()
 export class ViviendasService {
@@ -49,7 +51,7 @@ export class ViviendasService {
   }
 
   async findAll(filtros?: FilterViviendasDto) {
-    const where: Prisma.ViviendaWhereInput = { activa: true };
+    const where: Prisma.ViviendaWhereInput = { activa: true, es_borrador: false };
 
     if (filtros?.provincia && filtros.provincia !== 'todas') {
       where.provincia = { contains: filtros.provincia, mode: 'insensitive' };
@@ -112,7 +114,7 @@ export class ViviendasService {
 
   async findByPropietario(propietarioId: string) {
     return this.prisma.vivienda.findMany({
-      where: { propietario_id: propietarioId },
+      where: { propietario_id: propietarioId, es_borrador: false },
       orderBy: { fecha_creacion: 'desc' },
     });
   }
@@ -177,6 +179,150 @@ export class ViviendasService {
     return {
       signedUrl,
       publicUrl: this.storage.getPublicUrl(BUCKET_FOTOS, path),
+    };
+  }
+
+  // ── Borrador / Fases ──────────────────────────────────────────────
+
+  async createBorrador(userId: string, titulo: string) {
+    return this.prisma.vivienda.create({
+      data: {
+        titulo,
+        propietario_id: userId,
+        es_borrador: true,
+        activa: false,
+        fase_actual: 1,
+        fotos: [],
+      },
+    });
+  }
+
+  async updateFase(
+    id: string,
+    faseNum: number,
+    data: Record<string, any>,
+    userId: string,
+  ) {
+    const vivienda = await this.findById(id);
+
+    if (vivienda.propietario_id !== userId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+
+    if (!vivienda.es_borrador) {
+      throw new BadRequestException(
+        'No se pueden actualizar fases en una vivienda publicada',
+      );
+    }
+
+    const updateData: Prisma.ViviendaUpdateInput = {
+      ...data,
+      fase_actual: Math.max(vivienda.fase_actual, faseNum),
+    };
+
+    if (data.disponible_desde !== undefined) {
+      updateData.disponible_desde = data.disponible_desde
+        ? new Date(data.disponible_desde)
+        : null;
+    }
+
+    return this.prisma.vivienda.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+  async findBorradores(userId: string) {
+    return this.prisma.vivienda.findMany({
+      where: { propietario_id: userId, es_borrador: true },
+      orderBy: { fecha_creacion: 'desc' },
+    });
+  }
+
+  async publicar(id: string, userId: string) {
+    const vivienda = await this.findById(id);
+
+    if (vivienda.propietario_id !== userId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+
+    if (!vivienda.es_borrador) {
+      throw new BadRequestException('Esta vivienda ya está publicada');
+    }
+
+    const camposFaltantes: string[] = [];
+
+    if (!vivienda.titulo || vivienda.titulo.trim() === '')
+      camposFaltantes.push('titulo');
+    if (!vivienda.direccion || vivienda.direccion.trim() === '')
+      camposFaltantes.push('direccion');
+    if (!vivienda.ciudad || vivienda.ciudad.trim() === '')
+      camposFaltantes.push('ciudad');
+    if (!vivienda.precio_mes || vivienda.precio_mes <= 0)
+      camposFaltantes.push('precio_mes');
+    if (!vivienda.fianza_importe || vivienda.fianza_importe <= 0)
+      camposFaltantes.push('fianza_importe');
+    if (
+      !vivienda.num_registro_vivienda ||
+      vivienda.num_registro_vivienda.trim() === ''
+    )
+      camposFaltantes.push('num_registro_vivienda');
+    if (!vivienda.habitaciones || vivienda.habitaciones <= 0)
+      camposFaltantes.push('habitaciones');
+    if (!vivienda.banos || vivienda.banos <= 0)
+      camposFaltantes.push('banos');
+    if (!vivienda.m2 || vivienda.m2 <= 0) camposFaltantes.push('m2');
+    if (!vivienda.motivos || vivienda.motivos.length === 0)
+      camposFaltantes.push('motivos');
+
+    if (camposFaltantes.length > 0) {
+      throw new BadRequestException({ camposFaltantes });
+    }
+
+    return this.prisma.vivienda.update({
+      where: { id },
+      data: {
+        es_borrador: false,
+        activa: true,
+        fase_actual: 5,
+        verificada: !!vivienda.nota_simple_url,
+      },
+    });
+  }
+
+  async deleteBorrador(id: string, userId: string) {
+    const vivienda = await this.findById(id);
+
+    if (vivienda.propietario_id !== userId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+
+    if (!vivienda.es_borrador) {
+      throw new BadRequestException(
+        'Solo se pueden eliminar borradores',
+      );
+    }
+
+    return this.prisma.vivienda.delete({ where: { id } });
+  }
+
+  async getNotaSimpleUploadUrl(id: string, userId: string) {
+    const vivienda = await this.findById(id);
+
+    if (vivienda.propietario_id !== userId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+
+    const path = `nota-simple/${id}/${Date.now()}.pdf`;
+
+    const { signedUrl } = await this.storage.generateSignedUploadUrl(
+      BUCKET_NOTA_SIMPLE,
+      path,
+    );
+
+    return {
+      signedUrl,
+      publicUrl: this.storage.getPublicUrl(BUCKET_NOTA_SIMPLE, path),
     };
   }
 }

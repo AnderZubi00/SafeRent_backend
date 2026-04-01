@@ -56,7 +56,7 @@ export class ContratosService {
         titulo: solicitud.vivienda.titulo,
         direccion: solicitud.vivienda.direccion,
         ciudad: solicitud.vivienda.ciudad,
-        numRegistro: solicitud.vivienda.num_registro_vivienda,
+        numRegistro: solicitud.vivienda.num_registro_vivienda ?? 'No disponible',
         precioMes: solicitud.vivienda.precio_mes,
         fianza: solicitud.vivienda.fianza_importe,
       },

@@ -43,6 +43,9 @@ model Usuario {
 
   stripe_account_id String?  @unique
   verificado_kyc    Boolean  @default(false)
+  nombre_kyc        String?
+  apellidos_kyc     String?
+  tipo_documento    String?
 
   viviendas               Vivienda[]
   solicitudes_inquilino   Solicitud[]      @relation("inquilino")
@@ -63,19 +66,21 @@ model Vivienda {
 
   titulo                String
   descripcion           String?
-  direccion             String
+  direccion             String   @default("")
   barrio                String?
   ciudad                String   @default("Donostia-San Sebastián")
   provincia             String   @default("")
-  precio_mes            Float
-  fianza_importe        Float
+  precio_mes            Float    @default(0)
+  fianza_importe        Float    @default(0)
   habitaciones          Int      @default(1)
   banos                 Int      @default(1)
   m2                    Float    @default(0)
   motivos               String[] @default([])
   fotos                 String[] @default([])
 
-  num_registro_vivienda String   @unique
+  num_registro_vivienda String?  @unique
+  fase_actual            Int      @default(1)
+  es_borrador            Boolean  @default(false)
   nota_simple_url       String?
   verificada            Boolean  @default(false)
   activa                Boolean  @default(true)

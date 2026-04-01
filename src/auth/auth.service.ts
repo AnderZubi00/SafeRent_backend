@@ -126,6 +126,9 @@ export class AuthService {
         rol: true,
         dni_nie: true,
         verificado_kyc: true,
+        nombre_kyc: true,
+        apellidos_kyc: true,
+        tipo_documento: true,
         fecha_creacion: true,
       },
     });
@@ -143,6 +146,9 @@ export class AuthService {
     rol: string;
     nombre_completo: string;
     verificado_kyc: boolean;
+    nombre_kyc?: string | null;
+    apellidos_kyc?: string | null;
+    tipo_documento?: string | null;
   }) {
     const payload = {
       sub: usuario.id,
@@ -161,6 +167,9 @@ export class AuthService {
         nombre_completo: usuario.nombre_completo,
         rol: usuario.rol,
         verificado_kyc: usuario.verificado_kyc,
+        nombre_kyc: usuario.nombre_kyc ?? null,
+        apellidos_kyc: usuario.apellidos_kyc ?? null,
+        tipo_documento: usuario.tipo_documento ?? null,
       },
     };
   }

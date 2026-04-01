@@ -67,6 +67,24 @@ export class KycService {
     };
   }
 
+  // --- Propietario KYC completion ---
+
+  async completarPropietario(
+    userId: string,
+    data: { nombre: string; apellidos: string; dni_nie: string; tipo_documento: string },
+  ) {
+    return this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        nombre_kyc: data.nombre,
+        apellidos_kyc: data.apellidos,
+        dni_nie: data.dni_nie,
+        tipo_documento: data.tipo_documento,
+        verificado_kyc: true,
+      },
+    });
+  }
+
   // --- Analysis modes ---
 
   async analyzeMobile(imageBase64: string) {
