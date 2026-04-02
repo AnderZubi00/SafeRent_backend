@@ -49,7 +49,7 @@ export class ViviendasService {
   }
 
   async findAll(filtros?: FilterViviendasDto) {
-    const where: Prisma.ViviendaWhereInput = { activa: true };
+    const where: Prisma.ViviendaWhereInput = { activa: true, verificada: true };
 
     if (filtros?.provincia && filtros.provincia !== 'todas') {
       where.provincia = { contains: filtros.provincia, mode: 'insensitive' };
