@@ -8,8 +8,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { ExchangeTokenDto } from './dto/exchange-token.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -19,17 +17,10 @@ import type { JwtPayload } from '../common/decorators/current-user.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
-  }
-
-  @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
-  }
-
+  /**
+   * Intercambia un token de Supabase Auth por un JWT propio del backend.
+   * Este es el único endpoint de autenticación — login y registro pasan por Supabase.
+   */
   @Post('exchange')
   @HttpCode(HttpStatus.OK)
   exchange(@Body() dto: ExchangeTokenDto) {
