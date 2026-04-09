@@ -73,6 +73,8 @@ export class AuthService {
         apellidos_kyc: true,
         tipo_documento: true,
         fecha_creacion: true,
+        stripe_account_id: true,
+        stripe_onboarding_complete: true,
       },
     });
 
@@ -92,6 +94,8 @@ export class AuthService {
     nombre_kyc?: string | null;
     apellidos_kyc?: string | null;
     tipo_documento?: string | null;
+    stripe_account_id?: string | null;
+    stripe_onboarding_complete?: boolean;
   }) {
     const payload = {
       sub: usuario.id,
@@ -113,6 +117,8 @@ export class AuthService {
         nombre_kyc: usuario.nombre_kyc ?? null,
         apellidos_kyc: usuario.apellidos_kyc ?? null,
         tipo_documento: usuario.tipo_documento ?? null,
+        stripe_account_id: usuario.stripe_account_id ?? null,
+        stripe_onboarding_complete: usuario.stripe_onboarding_complete ?? false,
       },
     };
   }

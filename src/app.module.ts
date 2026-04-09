@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -20,6 +22,15 @@ import { NotificationsModule } from './notifications/notifications.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        { name: 'default', ttl: 60000, limit: 300 },
+        // Estos dos tienen límite alto globalmente — los @Throttle() en endpoints
+        // específicos los sobreescriben con límites bajos donde corresponde
+        { name: 'strict', ttl: 60000, limit: 1000 },
+        { name: 'kyc', ttl: 60000, limit: 1000 },
+      ],
+    }),
     PrismaModule,
     StorageModule,
     EmailModule,
@@ -33,6 +44,9 @@ import { NotificationsModule } from './notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

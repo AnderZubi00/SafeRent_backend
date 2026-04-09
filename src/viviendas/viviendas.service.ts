@@ -12,7 +12,7 @@ import { FilterViviendasDto } from './dto/filter-viviendas.dto';
 import { Prisma } from '@prisma/client';
 
 const BUCKET_FOTOS = 'viviendas-fotos';
-const BUCKET_NOTA_SIMPLE = 'viviendas-fotos';
+const BUCKET_NOTA_SIMPLE = 'documentos-solicitud';
 
 @Injectable()
 export class ViviendasService {
@@ -81,6 +81,10 @@ export class ViviendasService {
 
     if (filtros?.habitaciones !== undefined && filtros.habitaciones > 0) {
       where.habitaciones = { gte: filtros.habitaciones };
+    }
+
+    if (filtros?.soloVerificadas === true) {
+      where.verificada = true;
     }
 
     return this.prisma.vivienda.findMany({
@@ -210,6 +214,15 @@ export class ViviendasService {
     }
 
     if (!vivienda.es_borrador) {
+      // Allow fase 5 (verification) on published but unverified viviendas
+      if (faseNum === 5 && !vivienda.verificada) {
+        // Only allow nota_simple_url update in this case
+        const allowed = { nota_simple_url: data.nota_simple_url };
+        return this.prisma.vivienda.update({
+          where: { id },
+          data: allowed,
+        });
+      }
       throw new BadRequestException(
         'No se pueden actualizar fases en una vivienda publicada',
       );
@@ -250,6 +263,19 @@ export class ViviendasService {
       throw new BadRequestException('Esta vivienda ya está publicada');
     }
 
+    // ── Stripe Connect check ──
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { stripe_account_id: true, stripe_onboarding_complete: true },
+    });
+
+    if (!usuario?.stripe_account_id || !usuario?.stripe_onboarding_complete) {
+      throw new BadRequestException({
+        message: 'Debes conectar tu cuenta de Stripe antes de publicar',
+        code: 'STRIPE_NOT_CONNECTED',
+      });
+    }
+
     const camposFaltantes: string[] = [];
 
     if (!vivienda.titulo || vivienda.titulo.trim() === '')
@@ -284,9 +310,30 @@ export class ViviendasService {
       data: {
         es_borrador: false,
         activa: true,
-        fase_actual: 5,
-        verificada: !!vivienda.nota_simple_url,
+        fase_actual: 4,
+        verificada: false,
       },
+    });
+  }
+
+  async completarVerificacion(id: string, userId: string) {
+    const vivienda = await this.findById(id);
+
+    if (vivienda.propietario_id !== userId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+
+    if (vivienda.es_borrador) {
+      throw new BadRequestException('Publicá la vivienda antes de verificarla');
+    }
+
+    if (!vivienda.nota_simple_url) {
+      throw new BadRequestException('Debés subir la nota simple para verificar la vivienda');
+    }
+
+    return this.prisma.vivienda.update({
+      where: { id },
+      data: { verificada: true, fase_actual: 5 },
     });
   }
 
@@ -313,7 +360,7 @@ export class ViviendasService {
       throw new ForbiddenException('No eres el propietario de esta vivienda');
     }
 
-    const path = `nota-simple/${id}/${Date.now()}.pdf`;
+    const path = `${userId}/${id}/nota-simple-${Date.now()}.pdf`;
 
     const { signedUrl } = await this.storage.generateSignedUploadUrl(
       BUCKET_NOTA_SIMPLE,

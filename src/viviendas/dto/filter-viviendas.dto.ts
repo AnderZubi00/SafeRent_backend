@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class FilterViviendasDto {
@@ -31,4 +31,9 @@ export class FilterViviendasDto {
   @IsNumber()
   @Min(0)
   habitaciones?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  soloVerificadas?: boolean;
 }

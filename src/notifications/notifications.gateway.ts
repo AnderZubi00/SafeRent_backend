@@ -10,7 +10,16 @@ import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   namespace: 'notifications',
-  cors: { origin: '*' },
+  cors: {
+    origin:
+      process.env.NODE_ENV !== 'production'
+        ? /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/
+        : [
+            process.env.FRONTEND_URL ?? '',
+            /^https:\/\/saferent(-[a-z0-9]+)?-anderzubi00s-projects\.vercel\.app$/,
+          ],
+    credentials: true,
+  },
 })
 export class NotificationsGateway
   implements OnGatewayConnection, OnGatewayDisconnect

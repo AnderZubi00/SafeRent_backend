@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "pagos" ADD COLUMN IF NOT EXISTS "comision_plataforma" DOUBLE PRECISION;
+ALTER TABLE "pagos" ADD COLUMN IF NOT EXISTS "comision_host" DOUBLE PRECISION;
+ALTER TABLE "pagos" ADD COLUMN IF NOT EXISTS "comision_guest" DOUBLE PRECISION;
+ALTER TABLE "pagos" ADD COLUMN IF NOT EXISTS "importe_propietario" DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "usuarios" ADD COLUMN IF NOT EXISTS "stripe_onboarding_complete" BOOLEAN NOT NULL DEFAULT false;

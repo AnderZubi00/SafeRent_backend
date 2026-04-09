@@ -27,7 +27,12 @@ export class StorageService {
       throw new Error(`Error al generar URL de subida: ${error.message}`);
     }
 
-    return { signedUrl: data.signedUrl, path };
+    // createSignedUploadUrl returns a relative path — prepend the Supabase URL
+    const fullUrl = data.signedUrl.startsWith('http')
+      ? data.signedUrl
+      : `${this.supabaseUrl}${data.signedUrl}`;
+
+    return { signedUrl: fullUrl, path };
   }
 
   getPublicUrl(bucket: string, path: string): string {

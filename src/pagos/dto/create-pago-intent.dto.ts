@@ -1,4 +1,4 @@
-import { IsUUID, IsString, IsNumber, Min } from 'class-validator';
+import { IsUUID, IsString, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class CreatePagoIntentDto {
   @IsUUID()
@@ -13,4 +13,9 @@ export class CreatePagoIntentDto {
   @IsNumber()
   @Min(0.01)
   importe: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  fianza_importe?: number;
 }

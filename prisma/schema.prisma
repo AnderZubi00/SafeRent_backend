@@ -41,8 +41,9 @@ model Usuario {
   dni_nie           String?  @unique
   rol               Rol      @default(INQUILINO)
 
-  stripe_account_id String?  @unique
-  verificado_kyc    Boolean  @default(false)
+  stripe_account_id          String?  @unique
+  stripe_onboarding_complete Boolean  @default(false)
+  verificado_kyc             Boolean  @default(false)
   nombre_kyc        String?
   apellidos_kyc     String?
   tipo_documento    String?
@@ -156,6 +157,11 @@ model Pago {
   metodo         String    @default("tarjeta")
 
   stripe_payment_intent_id String? @unique
+
+  comision_plataforma      Float?
+  comision_host            Float?
+  comision_guest           Float?
+  importe_propietario      Float?
 
   fecha_pago     DateTime  @default(now())
 

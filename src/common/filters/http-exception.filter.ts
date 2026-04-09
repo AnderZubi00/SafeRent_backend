@@ -19,6 +19,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Error interno del servidor';
     let error = 'Internal Server Error';
+    let extra: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -30,6 +31,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const resp = exceptionResponse as Record<string, unknown>;
         message = (resp.message as string) ?? message;
         error = (resp.error as string) ?? error;
+        // Preservar campos adicionales estructurados (ej. code, camposFaltantes)
+        const { message: _m, error: _e, statusCode: _s, ...rest } = resp;
+        extra = rest;
       }
     } else {
       this.logger.error('Unhandled exception:', exception);
@@ -39,6 +43,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       error,
+      ...extra,
     });
   }
 }

@@ -3,9 +3,12 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Req,
   UseGuards,
+  ParseFloatPipe,
 } from '@nestjs/common';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { CreatePagoIntentDto } from './dto/create-pago-intent.dto';
@@ -22,6 +25,50 @@ import type { Request } from 'express';
 export class PagosController {
   constructor(private readonly pagosService: PagosService) {}
 
+  @Post('stripe-connect/mock')
+  @UseGuards(RolesGuard)
+  @Roles('PROPIETARIO')
+  mockStripeConnect(@CurrentUser() user: JwtPayload) {
+    return this.pagosService.mockStripeConnect(user);
+  }
+
+  @Post('stripe-connect/onboard')
+  @UseGuards(RolesGuard)
+  @Roles('PROPIETARIO')
+  onboardStripeConnect(@CurrentUser() user: JwtPayload) {
+    return this.pagosService.createStripeConnectAccount(user);
+  }
+
+  @Post('stripe-connect/onboard-refresh')
+  @UseGuards(RolesGuard)
+  @Roles('PROPIETARIO')
+  refreshOnboardingLink(@CurrentUser() user: JwtPayload) {
+    return this.pagosService.refreshOnboardingLink(user);
+  }
+
+  @Get('stripe-connect/status')
+  @UseGuards(RolesGuard)
+  @Roles('PROPIETARIO')
+  getStripeStatus(@CurrentUser() user: JwtPayload) {
+    return this.pagosService.getStripeConnectStatus(user.sub);
+  }
+
+  @Post('webhook/connect')
+  @SkipThrottle()
+  @UseGuards()
+  handleConnectWebhook(@Req() req: RawBodyRequest<Request>) {
+    const rawBody = req.rawBody!;
+    const signature = req.headers['stripe-signature'] as string;
+    return this.pagosService.handleConnectWebhook(rawBody, signature);
+  }
+
+  @Get('fee-preview')
+  @UseGuards(RolesGuard)
+  @Roles('INQUILINO')
+  getFeePreview(@Query('amount', ParseFloatPipe) amount: number) {
+    return this.pagosService.calculateFeePreview(amount);
+  }
+
   @Post()
   @UseGuards(RolesGuard)
   @Roles('INQUILINO')
@@ -33,6 +80,7 @@ export class PagosController {
   }
 
   @Post('create-intent')
+  @Throttle({ strict: { ttl: 60000, limit: 5 } })
   @UseGuards(RolesGuard)
   @Roles('INQUILINO')
   createIntent(
@@ -43,6 +91,7 @@ export class PagosController {
   }
 
   @Post('webhook')
+  @SkipThrottle()
   @UseGuards()
   handleWebhook(@Req() req: RawBodyRequest<Request>) {
     const rawBody = req.rawBody!;

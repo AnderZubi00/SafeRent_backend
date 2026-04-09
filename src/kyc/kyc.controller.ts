@@ -7,6 +7,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { KycService } from './kyc.service';
 import { EstadoKyc } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -42,6 +43,7 @@ export class KycController {
   }
 
   @Post('analizar')
+  @Throttle({ kyc: { ttl: 60000, limit: 3 } })
   @UseGuards(JwtAuthGuard)
   async analizar(
     @Body() body: { imagen_base64?: string },
@@ -53,6 +55,7 @@ export class KycController {
   }
 
   @Post('analizar/mrz')
+  @Throttle({ kyc: { ttl: 60000, limit: 3 } })
   @UseGuards(JwtAuthGuard)
   async analizarMrz(
     @Body() body: { imagen_base64: string; soporte?: string },
@@ -64,6 +67,7 @@ export class KycController {
   }
 
   @Post('analizar/completo')
+  @Throttle({ kyc: { ttl: 60000, limit: 3 } })
   @UseGuards(JwtAuthGuard)
   async analizarCompleto(
     @Body() body: { frente_base64: string; reverso_base64: string },
@@ -106,6 +110,7 @@ export class KycController {
   }
 
   @Post('mobile/analizar-completo')
+  @Throttle({ kyc: { ttl: 60000, limit: 3 } })
   async mobileAnalizarCompleto(
     @Body() body: { frente_base64: string; reverso_base64: string },
   ) {

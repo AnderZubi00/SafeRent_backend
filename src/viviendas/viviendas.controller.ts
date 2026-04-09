@@ -109,6 +109,16 @@ export class ViviendasController {
     return this.viviendasService.publicar(id, user.sub);
   }
 
+  @Post(':id/verificar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PROPIETARIO')
+  completarVerificacion(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    return this.viviendasService.completarVerificacion(id, user.sub);
+  }
+
   @Post(':id/nota-simple/upload-url')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PROPIETARIO')
