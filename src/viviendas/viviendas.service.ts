@@ -321,9 +321,9 @@ export class ViviendasService {
       camposFaltantes.push('direccion');
     if (!vivienda.ciudad || vivienda.ciudad.trim() === '')
       camposFaltantes.push('ciudad');
-    if (!vivienda.precio_mes || vivienda.precio_mes <= 0)
+    if (!vivienda.precio_mes || vivienda.precio_mes.lte(0))
       camposFaltantes.push('precio_mes');
-    if (!vivienda.fianza_importe || vivienda.fianza_importe <= 0)
+    if (!vivienda.fianza_importe || vivienda.fianza_importe.lte(0))
       camposFaltantes.push('fianza_importe');
     if (
       !vivienda.num_registro_vivienda ||

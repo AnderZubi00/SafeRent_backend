@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { json } from 'express';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
@@ -10,6 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(helmet());
+  app.use(cookieParser());
 
   // Base64 images (KYC DNI photos) can be ~3-5MB
   app.use(json({ limit: '10mb' }));

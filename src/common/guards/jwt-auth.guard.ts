@@ -30,6 +30,11 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractToken(request: Request): string | undefined {
+    // 1. HttpOnly cookie (web)
+    const cookieToken = (request as any).cookies?.saferent_jwt;
+    if (cookieToken) return cookieToken;
+
+    // 2. Authorization: Bearer <token> (mobile / API clients)
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : undefined;
   }

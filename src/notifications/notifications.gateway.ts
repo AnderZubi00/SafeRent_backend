@@ -33,19 +33,33 @@ export class NotificationsGateway
 
   async handleConnection(client: Socket) {
     try {
-      const token =
-        client.handshake.auth?.token || client.handshake.query?.token;
+      const token = this.extractToken(client);
       if (!token) {
         client.disconnect();
         return;
       }
-      const payload = await this.jwtService.verifyAsync(token as string);
+      const payload = await this.jwtService.verifyAsync(token);
       client.data.userId = payload.sub;
       client.join(`user:${payload.sub}`);
       this.logger.log(`Client connected: ${payload.sub}`);
     } catch {
       client.disconnect();
     }
+  }
+
+  private extractToken(client: Socket): string | undefined {
+    // 1. HttpOnly cookie (web)
+    const rawCookie = client.handshake.headers.cookie ?? '';
+    const match = rawCookie.match(/(?:^|;\s*)saferent_jwt=([^;]+)/);
+    if (match?.[1]) return match[1];
+
+    // 2. auth.token (mobile / legacy)
+    const authToken = client.handshake.auth?.token;
+    if (authToken) return authToken as string;
+
+    // 3. query param fallback
+    const queryToken = client.handshake.query?.token;
+    return queryToken ? (queryToken as string) : undefined;
   }
 
   handleDisconnect(client: Socket) {

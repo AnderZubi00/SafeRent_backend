@@ -75,7 +75,7 @@ export class PagosService {
         propietarioNombre: solicitud.propietario.nombre_completo,
         inquilinoNombre: solicitud.inquilino.nombre_completo,
         viviendaTitulo: solicitud.vivienda.titulo,
-        importe: `${dto.importe.toLocaleString('es-ES')} EUR`,
+        importe: `${Number(dto.importe).toLocaleString('es-ES')} EUR`,
       });
     }
 
@@ -220,7 +220,7 @@ export class PagosService {
             propietarioNombre: solicitud.propietario.nombre_completo,
             inquilinoNombre: solicitud.inquilino.nombre_completo,
             viviendaTitulo: solicitud.vivienda.titulo,
-            importe: `${pago.importe.toLocaleString('es-ES')} EUR`,
+            importe: `${pago.importe.toNumber().toLocaleString('es-ES')} EUR`,
           });
         }
         break;
