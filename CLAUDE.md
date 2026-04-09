@@ -15,6 +15,8 @@ read `AGENT.md` for routing rules, then load only the relevant skill from `.agen
 | Database / Prisma | `.agent/skills/database.skill.md` |
 | Contracts / PDF / Signaturit | `.agent/skills/contracts.skill.md` |
 | Estructura de módulos, bootstrap, comunicación inter-repo | `.agent/skills/architecture.skill.md` |
+| Supabase Auth, RLS, Storage, signed URLs, CLI, MCP | `.agent/skills/supabase/SKILL.md` |
+| Optimización SQL, índices, connection pooling, schema design | `.agent/skills/supabase-postgres-best-practices/SKILL.md` |
 
 ## Commands
 

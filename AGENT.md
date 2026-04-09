@@ -30,6 +30,8 @@ Lee la tarea actual y carga **únicamente** el skill indicado:
 | Schema Prisma, migraciones, decisiones de BD | `.agent/skills/database.skill.md` |
 | Contratos digitales, Signaturit, PDF, ContratoDigital | `.agent/skills/contracts.skill.md` |
 | Estructura de módulos, bootstrap, auth flow, comunicación inter-repo | `.agent/skills/architecture.skill.md` |
+| Supabase Auth, RLS, Storage, signed URLs, MCP, migraciones vía Supabase CLI | `.agent/skills/supabase/SKILL.md` |
+| Optimización de queries SQL, índices, connection pooling, schema design, performance de BD | `.agent/skills/supabase-postgres-best-practices/SKILL.md` |
 
 **Regla compuesta:** Si la tarea toca dos dominios (ej. KYC + BD), carga ambos skills.
 Nunca cargues un skill preventivamente.
@@ -167,3 +169,5 @@ FRONTEND_URL
 | `.agent/skills/database.skill.md` | BD & Schema | Prisma, migraciones |
 | `.agent/skills/contracts.skill.md` | Contratos | Signaturit, PDF, firma digital |
 | `.agent/skills/architecture.skill.md` | Arquitectura & Bootstrap | Estructura de módulos, main.ts, auth flow, inter-repo |
+| `.agent/skills/supabase/SKILL.md` | Supabase Platform | Auth, RLS, Storage, signed URLs, MCP, CLI, migrations |
+| `.agent/skills/supabase-postgres-best-practices/SKILL.md` | Postgres Performance | Indexes, queries, connection pooling, schema design |
