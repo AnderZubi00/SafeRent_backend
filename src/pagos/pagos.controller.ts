@@ -12,6 +12,7 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { PagosService } from './pagos.service';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { CreatePagoIntentDto } from './dto/create-pago-intent.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -102,14 +103,14 @@ export class PagosController {
   @Get('inquilino')
   @UseGuards(RolesGuard)
   @Roles('INQUILINO')
-  findByInquilino(@CurrentUser() user: JwtPayload) {
-    return this.pagosService.findByInquilino(user.sub);
+  findByInquilino(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.pagosService.findByInquilino(user.sub, pagination);
   }
 
   @Get('propietario')
   @UseGuards(RolesGuard)
   @Roles('PROPIETARIO')
-  findByPropietario(@CurrentUser() user: JwtPayload) {
-    return this.pagosService.findByPropietario(user.sub);
+  findByPropietario(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.pagosService.findByPropietario(user.sub, pagination);
   }
 }

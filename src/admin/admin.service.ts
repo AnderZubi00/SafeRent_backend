@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { paginate, PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 
 @Injectable()
 export class AdminService {
@@ -22,19 +24,32 @@ export class AdminService {
     };
   }
 
-  async getPropietarios() {
-    return this.prisma.usuario.findMany({
-      where: { rol: 'PROPIETARIO' },
-      select: {
-        id: true,
-        nombre_completo: true,
-        email: true,
-        rol: true,
-        verificado_kyc: true,
-        dni_nie: true,
-      },
-      orderBy: { verificado_kyc: 'asc' },
-    });
+  async getPropietarios(pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { rol: 'PROPIETARIO' as const };
+    const select = {
+      id: true,
+      nombre_completo: true,
+      email: true,
+      rol: true,
+      verificado_kyc: true,
+      dni_nie: true,
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.usuario.findMany({
+        where,
+        select,
+        orderBy: { verificado_kyc: 'asc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.usuario.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async toggleKyc(userId: string) {

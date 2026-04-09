@@ -11,6 +11,8 @@ import { StripeService } from './stripe.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { CreatePagoIntentDto } from './dto/create-pago-intent.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { paginate, PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 import {
   getCommissionRates,
   calculatePaymentBreakdown,
@@ -248,37 +250,59 @@ export class PagosService {
     return { received: true };
   }
 
-  async findByInquilino(inquilinoId: string) {
-    return this.prisma.pago.findMany({
-      where: { inquilino_id: inquilinoId },
-      include: {
-        vivienda: { select: { titulo: true, ciudad: true } },
-      },
-      orderBy: { fecha_pago: 'desc' },
-    });
+  async findByInquilino(inquilinoId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { inquilino_id: inquilinoId };
+
+    const [data, total] = await Promise.all([
+      this.prisma.pago.findMany({
+        where,
+        include: {
+          vivienda: { select: { titulo: true, ciudad: true } },
+        },
+        orderBy: { fecha_pago: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.pago.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
-  async findByPropietario(propietarioId: string) {
-    return this.prisma.pago.findMany({
-      where: {
-        vivienda: { propietario_id: propietarioId },
-      },
-      include: {
-        vivienda: { select: { titulo: true, ciudad: true, propietario_id: true } },
-        solicitud: {
-          select: {
-            inquilino_id: true,
-            motivo: true,
-            fecha_entrada: true,
-            fecha_salida: true,
-            inquilino: {
-              select: { nombre_completo: true, email: true },
+  async findByPropietario(propietarioId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { vivienda: { propietario_id: propietarioId } };
+
+    const [data, total] = await Promise.all([
+      this.prisma.pago.findMany({
+        where,
+        include: {
+          vivienda: { select: { titulo: true, ciudad: true, propietario_id: true } },
+          solicitud: {
+            select: {
+              inquilino_id: true,
+              motivo: true,
+              fecha_entrada: true,
+              fecha_salida: true,
+              inquilino: {
+                select: { nombre_completo: true, email: true },
+              },
             },
           },
         },
-      },
-      orderBy: { fecha_pago: 'desc' },
-    });
+        orderBy: { fecha_pago: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.pago.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async mockStripeConnect(user: JwtPayload) {

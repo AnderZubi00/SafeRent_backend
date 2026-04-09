@@ -4,11 +4,13 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { SolicitudesService } from './solicitudes.service';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { RejectSolicitudDto } from './dto/reject-solicitud.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -42,15 +44,15 @@ export class SolicitudesController {
   @Get('inquilino')
   @UseGuards(RolesGuard)
   @Roles('INQUILINO')
-  findByInquilino(@CurrentUser() user: JwtPayload) {
-    return this.solicitudesService.findByInquilino(user.sub);
+  findByInquilino(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.solicitudesService.findByInquilino(user.sub, pagination);
   }
 
   @Get('propietario')
   @UseGuards(RolesGuard)
   @Roles('PROPIETARIO')
-  findByPropietario(@CurrentUser() user: JwtPayload) {
-    return this.solicitudesService.findByPropietario(user.sub);
+  findByPropietario(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.solicitudesService.findByPropietario(user.sub, pagination);
   }
 
   @Get('pendientes/count')

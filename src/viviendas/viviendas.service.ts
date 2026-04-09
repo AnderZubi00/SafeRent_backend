@@ -9,6 +9,8 @@ import { StorageService } from '../storage/storage.service';
 import { CreateViviendaDto } from './dto/create-vivienda.dto';
 import { UpdateViviendaDto } from './dto/update-vivienda.dto';
 import { FilterViviendasDto } from './dto/filter-viviendas.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { paginate, PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 import { Prisma } from '@prisma/client';
 
 const BUCKET_FOTOS = 'viviendas-fotos';
@@ -50,7 +52,7 @@ export class ViviendasService {
     });
   }
 
-  async findAll(filtros?: FilterViviendasDto) {
+  async findAll(filtros?: FilterViviendasDto): Promise<PaginatedResponse<any>> {
     const where: Prisma.ViviendaWhereInput = { activa: true, es_borrador: false };
 
     if (filtros?.provincia && filtros.provincia !== 'todas') {
@@ -87,10 +89,21 @@ export class ViviendasService {
       where.verificada = true;
     }
 
-    return this.prisma.vivienda.findMany({
-      where,
-      orderBy: { fecha_creacion: 'desc' },
-    });
+    const page = filtros?.page ?? 1;
+    const limit = filtros?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.vivienda.findMany({
+        where,
+        orderBy: { fecha_creacion: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.vivienda.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async findById(id: string, includeOwner = false) {
@@ -116,11 +129,23 @@ export class ViviendasService {
     return vivienda;
   }
 
-  async findByPropietario(propietarioId: string) {
-    return this.prisma.vivienda.findMany({
-      where: { propietario_id: propietarioId, es_borrador: false },
-      orderBy: { fecha_creacion: 'desc' },
-    });
+  async findByPropietario(propietarioId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { propietario_id: propietarioId, es_borrador: false };
+
+    const [data, total] = await Promise.all([
+      this.prisma.vivienda.findMany({
+        where,
+        orderBy: { fecha_creacion: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.vivienda.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async update(id: string, propietarioId: string, dto: UpdateViviendaDto) {
@@ -245,11 +270,23 @@ export class ViviendasService {
     });
   }
 
-  async findBorradores(userId: string) {
-    return this.prisma.vivienda.findMany({
-      where: { propietario_id: userId, es_borrador: true },
-      orderBy: { fecha_creacion: 'desc' },
-    });
+  async findBorradores(userId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { propietario_id: userId, es_borrador: true };
+
+    const [data, total] = await Promise.all([
+      this.prisma.vivienda.findMany({
+        where,
+        orderBy: { fecha_creacion: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.vivienda.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async publicar(id: string, userId: string) {

@@ -18,6 +18,7 @@ import { UpdateFase3Dto } from './dto/update-fase3.dto';
 import { UpdateFase4Dto } from './dto/update-fase4.dto';
 import { UpdateFase5Dto } from './dto/update-fase5.dto';
 import { FilterViviendasDto } from './dto/filter-viviendas.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -36,8 +37,8 @@ export class ViviendasController {
   @Get('mis-viviendas')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PROPIETARIO')
-  findMine(@CurrentUser() user: JwtPayload) {
-    return this.viviendasService.findByPropietario(user.sub);
+  findMine(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.viviendasService.findByPropietario(user.sub, pagination);
   }
 
   // ── Borrador / Fases routes (BEFORE :id to avoid param matching) ──
@@ -55,8 +56,8 @@ export class ViviendasController {
   @Get('borradores')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('PROPIETARIO')
-  findBorradores(@CurrentUser() user: JwtPayload) {
-    return this.viviendasService.findBorradores(user.sub);
+  findBorradores(@CurrentUser() user: JwtPayload, @Query() pagination: PaginationDto) {
+    return this.viviendasService.findBorradores(user.sub, pagination);
   }
 
   // ── :id routes ─────────────────────────────────────────────────────

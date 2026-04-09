@@ -11,6 +11,8 @@ import { EmailService } from '../email/email.service';
 import { ContratosService } from '../contratos/contratos.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { paginate, PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 
 const BUCKET_DOCS = 'documentos-solicitud';
 
@@ -106,60 +108,86 @@ export class SolicitudesService {
     return solicitud;
   }
 
-  async findByInquilino(inquilinoId: string) {
-    return this.prisma.solicitud.findMany({
-      where: { inquilino_id: inquilinoId },
-      include: {
-        vivienda: {
-          select: {
-            id: true,
-            titulo: true,
-            ciudad: true,
-            barrio: true,
-            direccion: true,
-            precio_mes: true,
-            fianza_importe: true,
-            fotos: true,
-            estancia_minima: true,
-            estancia_maxima: true,
-            propietario_id: true,
-          },
+  async findByInquilino(inquilinoId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { inquilino_id: inquilinoId };
+    const include = {
+      vivienda: {
+        select: {
+          id: true,
+          titulo: true,
+          ciudad: true,
+          barrio: true,
+          direccion: true,
+          precio_mes: true,
+          fianza_importe: true,
+          fotos: true,
+          estancia_minima: true,
+          estancia_maxima: true,
+          propietario_id: true,
         },
       },
-      orderBy: { fecha_creacion: 'desc' },
-    });
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.solicitud.findMany({
+        where,
+        include,
+        orderBy: { fecha_creacion: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.solicitud.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
-  async findByPropietario(propietarioId: string) {
-    return this.prisma.solicitud.findMany({
-      where: { propietario_id: propietarioId },
-      include: {
-        vivienda: {
-          select: {
-            id: true,
-            titulo: true,
-            ciudad: true,
-            barrio: true,
-            direccion: true,
-            precio_mes: true,
-            fianza_importe: true,
-            fotos: true,
-            estancia_minima: true,
-            estancia_maxima: true,
-            propietario_id: true,
-          },
-        },
-        inquilino: {
-          select: {
-            id: true,
-            nombre_completo: true,
-            email: true,
-            dni_nie: true,
-          },
+  async findByPropietario(propietarioId: string, pagination?: PaginationDto): Promise<PaginatedResponse<any>> {
+    const page = pagination?.page ?? 1;
+    const limit = pagination?.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = { propietario_id: propietarioId };
+    const include = {
+      vivienda: {
+        select: {
+          id: true,
+          titulo: true,
+          ciudad: true,
+          barrio: true,
+          direccion: true,
+          precio_mes: true,
+          fianza_importe: true,
+          fotos: true,
+          estancia_minima: true,
+          estancia_maxima: true,
+          propietario_id: true,
         },
       },
-      orderBy: { fecha_creacion: 'desc' },
-    });
+      inquilino: {
+        select: {
+          id: true,
+          nombre_completo: true,
+          email: true,
+          dni_nie: true,
+        },
+      },
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.solicitud.findMany({
+        where,
+        include,
+        orderBy: { fecha_creacion: 'desc' },
+        take: limit,
+        skip,
+      }),
+      this.prisma.solicitud.count({ where }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async findById(id: string) {

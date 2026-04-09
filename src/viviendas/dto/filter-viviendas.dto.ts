@@ -1,7 +1,8 @@
 import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
-export class FilterViviendasDto {
+export class FilterViviendasDto extends PaginationDto {
   @IsOptional()
   @IsString()
   provincia?: string;
