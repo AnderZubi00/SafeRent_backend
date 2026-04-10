@@ -173,6 +173,16 @@ export class PagosService {
   async handleWebhook(rawBody: Buffer, signature: string) {
     const event = this.stripe.constructWebhookEvent(rawBody, signature);
 
+    // Idempotency: skip duplicate deliveries (Stripe retries for up to 3 days)
+    const inserted = await this.prisma.$executeRaw`
+      INSERT INTO stripe_webhook_events (event_id) VALUES (${event.id})
+      ON CONFLICT (event_id) DO NOTHING
+    `;
+    if (inserted === 0) {
+      this.logger.log(`Webhook ${event.id} already processed, skipping`);
+      return { received: true };
+    }
+
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const intent = event.data.object as Stripe.PaymentIntent;

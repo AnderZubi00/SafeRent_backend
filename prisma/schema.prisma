@@ -168,6 +168,13 @@ model Pago {
   @@map("pagos")
 }
 
+model StripeWebhookEvent {
+  event_id    String   @id
+  received_at DateTime @default(now())
+
+  @@map("stripe_webhook_events")
+}
+
 model KycSesion {
   id              String    @id @default(uuid())
   usuario         Usuario   @relation(fields: [usuario_id], references: [id])
