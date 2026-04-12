@@ -73,13 +73,24 @@ export class KycService {
     userId: string,
     data: { nombre: string; apellidos: string; dni_nie: string; tipo_documento: string },
   ) {
+    const nombre = data.nombre?.trim();
+    const apellidos = data.apellidos?.trim();
+    const dni_nie = data.dni_nie?.trim();
+    const tipo_documento = data.tipo_documento?.trim();
+
+    if (!nombre || !apellidos || !dni_nie || !tipo_documento) {
+      throw new BadRequestException(
+        'KYC incompleto: nombre, apellidos, dni_nie y tipo_documento son obligatorios',
+      );
+    }
+
     return this.prisma.usuario.update({
       where: { id: userId },
       data: {
-        nombre_kyc: data.nombre,
-        apellidos_kyc: data.apellidos,
-        dni_nie: data.dni_nie,
-        tipo_documento: data.tipo_documento,
+        nombre_kyc: nombre,
+        apellidos_kyc: apellidos,
+        dni_nie,
+        tipo_documento,
         verificado_kyc: true,
       },
     });

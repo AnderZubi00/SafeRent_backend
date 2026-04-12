@@ -82,6 +82,22 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no encontrado');
     }
 
+    // Defensa: si el flag está en true pero faltan campos KYC, el estado está
+    // corrupto. Auto-reparamos la DB (fire-and-forget) y devolvemos false
+    // al cliente para que vea la realidad y pueda rehacer la verificación.
+    const kycInconsistente =
+      usuario.verificado_kyc &&
+      (!usuario.nombre_kyc || !usuario.apellidos_kyc || !usuario.tipo_documento);
+
+    if (kycInconsistente) {
+      this.prisma.usuario
+        .update({ where: { id: userId }, data: { verificado_kyc: false } })
+        .catch((err) =>
+          console.error('[getProfile] auto-repair KYC falló', err),
+        );
+      return { ...usuario, verificado_kyc: false };
+    }
+
     return usuario;
   }
 
