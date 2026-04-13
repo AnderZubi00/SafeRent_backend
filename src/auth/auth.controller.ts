@@ -24,7 +24,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('exchange')
-  @Throttle({ strict: { ttl: 60000, limit: 5 } })
+  @Throttle({ strict: { ttl: 60000, limit: 50 } })
   @HttpCode(HttpStatus.OK)
   async exchange(
     @Body() dto: ExchangeTokenDto,
