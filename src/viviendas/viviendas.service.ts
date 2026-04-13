@@ -347,7 +347,7 @@ export class ViviendasService {
       data: {
         es_borrador: false,
         activa: true,
-        fase_actual: 4,
+        fase_actual: 5,
         verificada: false,
       },
     });
