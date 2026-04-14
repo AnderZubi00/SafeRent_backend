@@ -62,6 +62,11 @@ export class ViviendasController {
 
   // ── :id routes ─────────────────────────────────────────────────────
 
+  @Get(':id/disponibilidad')
+  getDisponibilidad(@Param('id') id: string) {
+    return this.viviendasService.getDisponibilidad(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.viviendasService.findById(id, true);

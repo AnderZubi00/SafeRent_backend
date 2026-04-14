@@ -1,4 +1,4 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -37,4 +37,12 @@ export class FilterViviendasDto extends PaginationDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   soloVerificadas?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  fechaEntrada?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaSalida?: string;
 }
