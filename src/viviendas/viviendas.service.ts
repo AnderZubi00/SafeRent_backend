@@ -93,10 +93,17 @@ export class ViviendasService {
     const limit = filtros?.limit ?? 20;
     const skip = (page - 1) * limit;
 
+    const orderBy: Prisma.ViviendaOrderByWithRelationInput =
+      filtros?.ordenar === 'precio_asc'
+        ? { precio_mes: 'asc' }
+        : filtros?.ordenar === 'precio_desc'
+          ? { precio_mes: 'desc' }
+          : { fecha_creacion: 'desc' };
+
     const [data, total] = await Promise.all([
       this.prisma.vivienda.findMany({
         where,
-        orderBy: { fecha_creacion: 'desc' },
+        orderBy,
         take: limit,
         skip,
       }),

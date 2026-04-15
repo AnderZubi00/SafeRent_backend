@@ -37,4 +37,8 @@ export class FilterViviendasDto extends PaginationDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   soloVerificadas?: boolean;
+
+  @IsOptional()
+  @IsString()
+  ordenar?: 'recientes' | 'precio_asc' | 'precio_desc';
 }
