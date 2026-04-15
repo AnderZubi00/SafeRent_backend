@@ -54,6 +54,7 @@ export class ViviendasService {
 
   async findAll(filtros?: FilterViviendasDto): Promise<PaginatedResponse<any>> {
     const where: Prisma.ViviendaWhereInput = { activa: true, es_borrador: false };
+    const { fechaEntrada, fechaSalida } = filtros ?? {};
 
     if (filtros?.provincia && filtros.provincia !== 'todas') {
       where.provincia = { contains: filtros.provincia, mode: 'insensitive' };
@@ -88,6 +89,35 @@ export class ViviendasService {
     if (filtros?.soloVerificadas === true) {
       where.verificada = true;
     }
+
+    // Filtro de disponibilidad por fechas
+    Object.assign(
+      where,
+      fechaEntrada && fechaSalida
+        ? {
+            NOT: {
+              solicitudes: {
+                some: {
+                  estado: 'ACEPTADA' as const,
+                  fecha_entrada: { lt: new Date(fechaSalida) },
+                  fecha_salida: { gt: new Date(fechaEntrada) },
+                },
+              },
+            },
+            OR: [
+              { disponible_desde: null },
+              { disponible_desde: { lte: new Date(fechaEntrada) } },
+            ],
+          }
+        : fechaEntrada
+          ? {
+              OR: [
+                { disponible_desde: null },
+                { disponible_desde: { lte: new Date(fechaEntrada) } },
+              ],
+            }
+          : {},
+    );
 
     const page = filtros?.page ?? 1;
     const limit = filtros?.limit ?? 20;
@@ -395,6 +425,37 @@ export class ViviendasService {
     }
 
     return this.prisma.vivienda.delete({ where: { id } });
+  }
+
+  async getDisponibilidad(id: string) {
+    const vivienda = await this.prisma.vivienda.findUnique({
+      where: { id },
+      select: {
+        disponible_desde: true,
+        estancia_minima: true,
+        estancia_maxima: true,
+        solicitudes: {
+          where: { estado: 'ACEPTADA' },
+          select: {
+            fecha_entrada: true,
+            fecha_salida: true,
+          },
+          orderBy: { fecha_entrada: 'asc' },
+        },
+      },
+    });
+
+    if (!vivienda) throw new NotFoundException('Vivienda no encontrada');
+
+    return {
+      disponible_desde: vivienda.disponible_desde,
+      estancia_minima: vivienda.estancia_minima,
+      estancia_maxima: vivienda.estancia_maxima,
+      ocupaciones: vivienda.solicitudes.map((s) => ({
+        fecha_entrada: s.fecha_entrada,
+        fecha_salida: s.fecha_salida,
+      })),
+    };
   }
 
   async getNotaSimpleUploadUrl(id: string, userId: string) {

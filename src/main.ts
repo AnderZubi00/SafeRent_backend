@@ -47,6 +47,7 @@ async function bootstrap() {
           const allowed =
             !origin ||
             origin === frontendUrl ||
+            /^https:\/\/saferent(-[a-z0-9]+)?\.vercel\.app$/.test(origin) ||
             /^https:\/\/saferent(-[a-z0-9]+)?-anderzubi00s-projects\.vercel\.app$/.test(origin);
           if (allowed) {
             cb(null, true);
