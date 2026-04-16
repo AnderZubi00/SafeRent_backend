@@ -95,6 +95,9 @@ model Vivienda {
   pagos                 Pago[]
   fecha_creacion        DateTime @default(now())
 
+  @@index([activa, es_borrador])
+  @@index([provincia])
+  @@index([propietario_id])
   @@map("viviendas")
 }
 
@@ -122,6 +125,10 @@ model Solicitud {
 
   fecha_creacion           DateTime        @default(now())
 
+  @@index([inquilino_id])
+  @@index([propietario_id])
+  @@index([estado])
+  @@index([vivienda_id, estado])
   @@map("solicitudes")
 }
 
@@ -165,6 +172,8 @@ model Pago {
 
   fecha_pago     DateTime  @default(now())
 
+  @@index([solicitud_id])
+  @@index([inquilino_id])
   @@map("pagos")
 }
 
@@ -194,5 +203,6 @@ model KycSesion {
   creado_en       DateTime  @default(now())
   actualizado_en  DateTime  @updatedAt
 
+  @@index([usuario_id])
   @@map("kyc_sesiones")
 }
