@@ -8,16 +8,29 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { Logger } from '@nestjs/common';
 
+const DEV_ORIGIN =
+  /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/;
+const PROD_ORIGINS = [
+  process.env.FRONTEND_URL ?? '',
+  /^https:\/\/saferent(-[a-z0-9]+)?-anderzubi00s-projects\.vercel\.app$/,
+] as const;
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  // React Native / apps nativas no envían Origin → la seguridad recae en el JWT
+  if (!origin) return true;
+  if (process.env.NODE_ENV !== 'production') return DEV_ORIGIN.test(origin);
+  return PROD_ORIGINS.some((allowed) =>
+    typeof allowed === 'string' ? allowed === origin : allowed.test(origin),
+  );
+}
+
 @WebSocketGateway({
   namespace: 'notifications',
   cors: {
-    origin:
-      process.env.NODE_ENV !== 'production'
-        ? /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/
-        : [
-            process.env.FRONTEND_URL ?? '',
-            /^https:\/\/saferent(-[a-z0-9]+)?-anderzubi00s-projects\.vercel\.app$/,
-          ],
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow: boolean) => void,
+    ) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
   },
 })
