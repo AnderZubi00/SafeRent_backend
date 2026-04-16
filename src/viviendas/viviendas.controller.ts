@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { CreateBloqueoDto } from './dto/create-bloqueo.dto';
 import { ViviendasService } from './viviendas.service';
 import { CreateViviendaDto } from './dto/create-vivienda.dto';
 import { CreateBorradorDto } from './dto/create-borrador.dto';
@@ -61,6 +62,28 @@ export class ViviendasController {
   }
 
   // ── :id routes ─────────────────────────────────────────────────────
+
+  @Post(':id/bloqueos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PROPIETARIO')
+  crearBloqueo(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: CreateBloqueoDto,
+  ) {
+    return this.viviendasService.crearBloqueo(id, user.sub, dto);
+  }
+
+  @Delete(':id/bloqueos/:bloqueoId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PROPIETARIO')
+  eliminarBloqueo(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') _id: string,
+    @Param('bloqueoId') bloqueoId: string,
+  ) {
+    return this.viviendasService.eliminarBloqueo(bloqueoId, user.sub);
+  }
 
   @Get(':id/disponibilidad')
   getDisponibilidad(@Param('id') id: string) {

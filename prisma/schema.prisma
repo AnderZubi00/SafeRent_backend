@@ -93,6 +93,7 @@ model Vivienda {
 
   solicitudes           Solicitud[]
   pagos                 Pago[]
+  bloqueos              BloqueoFecha[]
   fecha_creacion        DateTime @default(now())
 
   @@index([activa, es_borrador])
@@ -130,6 +131,18 @@ model Solicitud {
   @@index([estado])
   @@index([vivienda_id, estado])
   @@map("solicitudes")
+}
+
+model BloqueoFecha {
+  id           String   @id @default(uuid())
+  vivienda     Vivienda @relation(fields: [vivienda_id], references: [id], onDelete: Cascade)
+  vivienda_id  String
+  fecha_inicio DateTime
+  fecha_fin    DateTime
+  motivo       String?
+
+  @@index([vivienda_id])
+  @@map("bloqueos_fechas")
 }
 
 model ContratoDigital {

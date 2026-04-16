@@ -9,6 +9,7 @@ import { StorageService } from '../storage/storage.service';
 import { CreateViviendaDto } from './dto/create-vivienda.dto';
 import { UpdateViviendaDto } from './dto/update-vivienda.dto';
 import { FilterViviendasDto } from './dto/filter-viviendas.dto';
+import { CreateBloqueoDto } from './dto/create-bloqueo.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, PaginatedResponse } from '../common/interfaces/paginated-response.interface';
 import { Prisma } from '@prisma/client';
@@ -95,15 +96,25 @@ export class ViviendasService {
       where,
       fechaEntrada && fechaSalida
         ? {
-            NOT: {
-              solicitudes: {
-                some: {
-                  estado: 'ACEPTADA' as const,
-                  fecha_entrada: { lt: new Date(fechaSalida) },
-                  fecha_salida: { gt: new Date(fechaEntrada) },
+            NOT: [
+              {
+                solicitudes: {
+                  some: {
+                    estado: 'ACEPTADA' as const,
+                    fecha_entrada: { lt: new Date(fechaSalida) },
+                    fecha_salida: { gt: new Date(fechaEntrada) },
+                  },
                 },
               },
-            },
+              {
+                bloqueos: {
+                  some: {
+                    fecha_inicio: { lt: new Date(fechaSalida) },
+                    fecha_fin:    { gt: new Date(fechaEntrada) },
+                  },
+                },
+              },
+            ],
             OR: [
               { disponible_desde: null },
               { disponible_desde: { lte: new Date(fechaEntrada) } },
@@ -442,6 +453,10 @@ export class ViviendasService {
           },
           orderBy: { fecha_entrada: 'asc' },
         },
+        bloqueos: {
+          select: { id: true, fecha_inicio: true, fecha_fin: true, motivo: true },
+          orderBy: { fecha_inicio: 'asc' },
+        },
       },
     });
 
@@ -455,7 +470,35 @@ export class ViviendasService {
         fecha_entrada: s.fecha_entrada,
         fecha_salida: s.fecha_salida,
       })),
+      bloqueos: vivienda.bloqueos,
     };
+  }
+
+  async crearBloqueo(viviendaId: string, propietarioId: string, dto: CreateBloqueoDto) {
+    const vivienda = await this.findById(viviendaId);
+    if (vivienda.propietario_id !== propietarioId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+    const inicio = new Date(dto.fecha_inicio);
+    const fin    = new Date(dto.fecha_fin);
+    if (inicio >= fin) {
+      throw new BadRequestException('fecha_inicio debe ser anterior a fecha_fin');
+    }
+    return this.prisma.bloqueoFecha.create({
+      data: { vivienda_id: viviendaId, fecha_inicio: inicio, fecha_fin: fin, motivo: dto.motivo },
+    });
+  }
+
+  async eliminarBloqueo(bloqueoId: string, propietarioId: string) {
+    const bloqueo = await this.prisma.bloqueoFecha.findUnique({
+      where: { id: bloqueoId },
+      include: { vivienda: { select: { propietario_id: true } } },
+    });
+    if (!bloqueo) throw new NotFoundException('Bloqueo no encontrado');
+    if (bloqueo.vivienda.propietario_id !== propietarioId) {
+      throw new ForbiddenException('No eres el propietario de esta vivienda');
+    }
+    return this.prisma.bloqueoFecha.delete({ where: { id: bloqueoId } });
   }
 
   async getNotaSimpleUploadUrl(id: string, userId: string) {

@@ -299,6 +299,17 @@ export class SolicitudesService {
       throw new BadRequestException('Ya existe una reserva aceptada con fechas solapadas para esta vivienda');
     }
 
+    const bloqueoActivo = await this.prisma.bloqueoFecha.findFirst({
+      where: {
+        vivienda_id: solicitud.vivienda_id,
+        fecha_inicio: { lt: solicitud.fecha_salida },
+        fecha_fin:    { gt: solicitud.fecha_entrada },
+      },
+    });
+    if (bloqueoActivo) {
+      throw new BadRequestException('La vivienda tiene un bloqueo manual en esas fechas');
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const sol = await tx.solicitud.update({
         where: { id },
