@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -45,4 +45,8 @@ export class FilterViviendasDto extends PaginationDto {
   @IsOptional()
   @IsDateString()
   fechaSalida?: string;
+
+  @IsOptional()
+  @IsEnum(['precio_asc', 'precio_desc'])
+  ordenar?: 'precio_asc' | 'precio_desc';
 }
